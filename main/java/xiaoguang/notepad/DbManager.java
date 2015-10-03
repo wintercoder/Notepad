@@ -13,7 +13,6 @@ import java.io.ByteArrayOutputStream;
 import java.sql.Blob;
 import java.util.List;
 
-import xiaoguang.tools.BitMapUtil;
 import xiaoguang.tools.Constants;
 
 
@@ -41,9 +40,12 @@ public class DbManager {
         return dbWritable;
     }
 
-    public void dbWriting(String icoPath, String content, String time) {
+    public void dbWriting(Bitmap bitmap, String content, String time) {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, os);
+
         ContentValues values = new ContentValues();
-        values.put(Constants.KEY_IMAGE, icoPath);
+        values.put(Constants.KEY_IMAGE, os.toByteArray());
         values.put(Constants.KEY_CONTENT, content);
         values.put(Constants.KEY_TIME, time);
         dbWritable.insert(Constants.TABLE_NAME, null, values);
@@ -57,8 +59,8 @@ public class DbManager {
             while (cursor.moveToNext()) {
                 ItemBean note = new ItemBean();
                 note.setId(cursor.getInt(cursor.getColumnIndex(Constants.KEY_ID)));
-                Bitmap bitmap = BitMapUtil.getBitmap(cursor.getString(cursor.getColumnIndex(Constants.KEY_IMAGE)), Constants.ICO_PIC_WIDTH, Constants.ICO_PIC_HEIGHT);
-                note.setImage(bitmap);
+                byte[] blob = cursor.getBlob(cursor.getColumnIndex(Constants.KEY_IMAGE));
+                note.setImage(BitmapFactory.decodeByteArray(blob, 0, blob.length));
                 note.setContent(cursor.getString(cursor.getColumnIndex(Constants.KEY_CONTENT)));
                 note.setTime(cursor.getString(cursor.getColumnIndex(Constants.KEY_TIME)));
                 list.add(note);
@@ -82,40 +84,50 @@ public class DbManager {
             return null;
         ItemBean note = new ItemBean();
         note.setId(cursor.getInt(cursor.getColumnIndex(Constants.KEY_ID)));
-        Bitmap bitmap = BitMapUtil.getBitmap(cursor.getString(cursor.getColumnIndex(Constants.KEY_IMAGE)), Constants.ICO_PIC_WIDTH, Constants.ICO_PIC_HEIGHT);
-        note.setImage(bitmap);
+        byte[] blob = cursor.getBlob(cursor.getColumnIndex(Constants.KEY_IMAGE));
+        note.setImage(BitmapFactory.decodeByteArray(blob, 0, blob.length));
         note.setContent(cursor.getString(cursor.getColumnIndex(Constants.KEY_CONTENT)));
         note.setTime(cursor.getString(cursor.getColumnIndex(Constants.KEY_TIME)));
         cursor.close();
         return note;
     }
 
-    /**
-     * 实时更新图标的Update
-     * @param id
-     * @param path
-     * @param content
-     * @param time
-     */
-    public void updateData(int id,String path,String content,String time){
+    public void updateData(int id,String content,String time){
         ContentValues cv = new ContentValues();
-        cv.put(Constants.KEY_IMAGE,path);
         cv.put(Constants.KEY_CONTENT, content);
         cv.put(Constants.KEY_TIME, time);
         dbWritable.update(Constants.TABLE_NAME, cv, Constants.KEY_ID + "=?", new String[]{id + ""});
     }
 
     /**
-     * 不修改图标的Update
-     * @param id
-     * @param content
-     * @param time
+     * 数据库中插入图片，为了等会在文本中显示对应的图片，也顺便返回它的ID
+     * @param bitmap
+     * @return 这个图片在数据库中的ID
      */
-    public void updateData(int id,String content,String time){
+    public int dbInsertPic(Bitmap bitmap){
         ContentValues cv = new ContentValues();
-        cv.put(Constants.KEY_CONTENT, content);
-        cv.put(Constants.KEY_TIME, time);
-        dbWritable.update(Constants.TABLE_NAME, cv, Constants.KEY_ID + "=?", new String[]{id + ""});
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, os);
+        cv.put(Constants.PIC_IMG, os.toByteArray());
+        dbWritable.insert(Constants.PIC_TABLE, null, cv);
+        Cursor cursor = dbReadable.rawQuery("select last_insert_rowid() ",null);
+//        Cursor cursor = dbReadable.rawQuery("select last_insert_rowid() from "+Constants.PIC_TABLE,null);
+        int lastId = -1;
+        if(cursor.moveToFirst())
+            lastId = cursor.getInt(0);
+        cursor.close();
+        return lastId;
+    }
+
+    public Bitmap getPicById(int id){
+        Cursor cursor = dbReadable.rawQuery("SELECT * FROM "
+                + Constants.PIC_TABLE + " WHERE "
+                + Constants.PIC_ID + " = ?", new String[]{id+""});
+        if(!cursor.moveToFirst())
+            return null;
+        byte[] blob = cursor.getBlob(cursor.getColumnIndex(Constants.PIC_IMG));
+        cursor.close();
+        return BitmapFactory.decodeByteArray(blob, 0, blob.length);
     }
 
     public void delNoteById(int id){

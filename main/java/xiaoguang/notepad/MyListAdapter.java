@@ -1,6 +1,13 @@
 package xiaoguang.notepad;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Environment;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.ImageSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,7 +21,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import xiaoguang.tools.BitmapTools;
 import xiaoguang.tools.Constants;
+import xiaoguang.tools.ToastUtils;
 
 /**
  * Created by xiaoguang on 2015/8/25.
@@ -94,24 +103,26 @@ public class MyListAdapter extends BaseAdapter{
     }
 
     /**
-     * 去除文本里的路径
+     * 去除文本里的路径和<pic_id>
      * @param content
      * @return 无图片标记的文本String
      */
     private String delPathForContent(String content){
-        String patternStr =  Constants.PicPatten;
+        String patternStr = Environment.getExternalStorageDirectory()
+                + "/" + Constants.IMG_DIR + "/.+?\\.\\w{3}";
         Pattern pattern = Pattern.compile(patternStr);
         Matcher m = pattern.matcher(content);
         content = m.replaceAll("");
+
+        String patternPicStr = "<pic_" + "\\d*"+">";
+        Pattern patternPic = Pattern.compile(patternPicStr);
+        Matcher mPic = patternPic.matcher(content);
+        content = mPic.replaceAll("");
 
         patternStr = "\\n";
         pattern = Pattern.compile(patternStr);
         m = pattern.matcher(content);
         content = m.replaceAll("");
-
-        if(content.length() > 12){
-            content = content.substring(0,12) + "...";
-        }
         return content;
     }
 }

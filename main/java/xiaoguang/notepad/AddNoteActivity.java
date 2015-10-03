@@ -3,31 +3,41 @@ package xiaoguang.notepad;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.WallpaperManager;
+import android.content.ContentResolver;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.os.AsyncTask;
+import android.text.Spannable;
+import android.text.SpannableString;
 import android.text.format.Time;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.text.style.ImageSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
+import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import xiaoguang.tools.BitMapUtil;
+import xiaoguang.tools.BitmapTools;
 import xiaoguang.tools.Constants;
 import xiaoguang.tools.SpanText;
 import xiaoguang.tools.ToastUtils;
@@ -45,7 +55,7 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
     public SpanText spanContentText = null;
     /** 重载TextView后的Text框，与记事本的编辑框绑定 **/
     private String currImgPath = "";
-    /** 当前这次的图片路径 **/
+    /** 当前这次的图片路径，在该APP文件夹里的MainActivity的IMG_DIR目录下 **/
     public static AddNoteActivity addNoteActivity;
     private DbManager dbManager;
     private int noteId = -1;
@@ -97,8 +107,12 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
                 backToMainActivity();
                 break;
             case R.id.id_btn_save:
-                String icoPath = getOnePicPath(spanContentText.getText().toString());
-                saveNote(icoPath);
+                Bitmap ico = getOnePic(spanContentText.getText().toString());
+                if( null != ico ){
+                    saveNote(ico);
+                }else{
+                    saveNote();
+                }
                 backToMainActivity();
                 break;
             case R.id.id_btn_usingpic:
@@ -122,7 +136,7 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
     }
 
     /**
-     * 读取数据库的图片文本用，防止阻了UI，造成卡顿
+     * 读取数据库数据用，防止阻了UI，造成卡顿
      */
     class getDataAsyncTask extends AsyncTask<Integer,Void,ItemBean>{
         @Override
@@ -139,24 +153,32 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
         @Override
         protected void onPostExecute(ItemBean note) {
             super.onPostExecute(note);
-            spanContentText.setPicText(note.getContent());
+            spanContentText.setSpanContentPic_Cam(note.getContent());
             timeView.setText(note.getTime());
         }
     }
 
-
-    private void saveNote(String path){
-        String text = spanContentText.getText().toString();
-        if( editOrNewState == 0){
-            dbManager.updateData(noteId,getOnePicPath(text),text,getCurTime());
-        }else {
-            if(path==null) {
-                path = "/no_pic/test.jpg";
-                //只是为了不挂掉随便给的，加载时为空
-            }
-            dbManager.dbWriting(path, text, getCurTime());
+    /**
+     * 纯文本情况下保存，默认用壁纸当图标
+     */
+    private void saveNote(){
+        WallpaperManager wallpaperManager = WallpaperManager.getInstance(this);
+        Bitmap bitmap = ((BitmapDrawable)wallpaperManager.getDrawable()).getBitmap();
+//        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+        if( editOrNewState == 0) {
+            dbManager.updateData(noteId, spanContentText.getText().toString(), getCurTime());
+        }else{
+            dbManager.dbWriting(bitmap, spanContentText.getText().toString(), getCurTime());
         }
-//        ToastUtils.showShort(this, "save");
+        ToastUtils.showShort(this, "save");
+    }
+    private void saveNote(Bitmap bitmap){
+        if( editOrNewState == 0){
+            dbManager.updateData(noteId, spanContentText.getText().toString(), getCurTime());
+        }else {
+            dbManager.dbWriting(bitmap, spanContentText.getText().toString(), getCurTime());
+        }
+        ToastUtils.showShort(this, "save");
     }
 
 
@@ -179,6 +201,8 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
         File file = new File(currImgPath);
         //将File对象转换为Uri并启动照相程序
         Uri uri = Uri.fromFile(file);
+        Toast.makeText(getApplicationContext(), currImgPath.toString(), Toast.LENGTH_SHORT)
+                .show();
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE); //照相
         intent.putExtra(MediaStore.EXTRA_OUTPUT, uri); //指定图片输出地址
         intent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 1);
@@ -188,39 +212,83 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (Activity.RESULT_OK != resultCode) {
-//            ToastUtils.showShort(getApplicationContext(), "操作失败");
+            ToastUtils.showShort(getApplicationContext(), "操作失败");
             return;
         }
         switch (requestCode) {
             case TAKE_PHOTO:
-                spanContentText.addImgToText(currImgPath);
+                BitmapFactory.Options opts = new BitmapFactory.Options();
+                opts.inSampleSize = 3;
+                Bitmap bitmap = BitmapFactory.decodeFile(currImgPath,opts);
+                //避免内存溢出
+                Bitmap resizedBitmap = BitmapTools.getScaleBitmap(bitmap, 0.3f, 0.3f);
+                // ↑获取缩略图   ↓如果bitmap非空，回收以减少内存消耗
+                spanContentText.addImgToText(resizedBitmap, currImgPath);
+                if(bitmap != null) {
+                    bitmap.recycle();
+                }
                 break;
-            case USING_GALLERY:     //图库
-                if(data!=null) {
-                    Uri imgUri = data.getData();
-                    //获取图片路径
-                    String[] ts1 = {MediaStore.Images.Media.DATA};
-                    Cursor cursor = managedQuery(imgUri, ts1, null, null, null);
-                    int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-                    cursor.moveToFirst();
-                    String path = cursor.getString(column_index);
-                    spanContentText.addImgToText(path);
-                }break;
+            case USING_GALLERY:     //保存选中的图片
+                Uri imgUri =  data.getData();
+                Bitmap image = null;
+                ContentResolver cr = this.getContentResolver();
+                if(imgUri != null){
+                    try {
+                        image = BitmapFactory.decodeStream(cr.openInputStream(imgUri));
+                        } catch (FileNotFoundException e) {
+                            e.printStackTrace();
+                        }
+                }else{
+                    Bundle extras = data.getExtras();
+                    if (extras != null) {
+                        // 这里是有些拍照后的图片是直接存放到Bundle中的所以我们可以从这里面获取Bitmap图片
+                        image = extras.getParcelable("data");
+                    }else{
+                        ToastUtils.showShort(getApplicationContext(), "图片空");
+                    }
+                }
+                Bitmap resizeBitmap = BitmapTools.getScaleBitmap(image,0.7f,0.7f);
+                int lastId = dbManager.dbInsertPic(resizeBitmap);
+                spanContentText.addImgToText(resizeBitmap, lastId);
+                break;
         }
         MainActivity.refreshUI(); //刷新UI
     }
 
     /**
-     * 从文本中匹配出一张图片，直接选第一个匹配到的
+     * 从文本中匹配出一张图片，直接选第一个匹配到的，且拍照的图片优先
      * @param content
      * @return 图片bitmap或者null
      */
-    private String getOnePicPath(String content){
-        String patternStr = Constants.PicPatten;
-        Pattern pattern = Pattern.compile(patternStr);
-        Matcher mc = pattern.matcher(content);
-        if (mc.find()){
-            return mc.group();
+    private Bitmap getOnePic(String content){
+        String patternCamStr = Environment.getExternalStorageDirectory()
+                + "/" + Constants.IMG_DIR + "/.+?\\.\\w{3}";
+        Pattern patternCam = Pattern.compile(patternCamStr);
+        Matcher mCam = patternCam.matcher(content);
+        if(mCam.find()){
+            Bitmap bmpCam = BitmapFactory.decodeFile(mCam.group());
+            Bitmap bitmapCam = BitmapTools.getScaleBitmap(bmpCam, 0.5f, 0.5f);
+            if(bmpCam != null){
+                bmpCam.recycle();
+            }
+            return bitmapCam;
+        }
+
+        String patternPicStr = "<pic_" + "\\d?"+">";
+        Pattern patternPic = Pattern.compile(patternPicStr);
+        Matcher mPic = patternPic.matcher(content);
+        if(mPic.find()){
+            String patStr = "[\\d]+";
+            Matcher mc = Pattern.compile(patStr).matcher(mPic.group());
+            if(mc.find()){
+                DbManager dbManager = new DbManager(AddNoteActivity.addNoteActivity);
+                Bitmap map = dbManager.getPicById(Integer.parseInt(mc.group()));
+                Bitmap bitmap = BitmapTools.getScaleBitmap(map, 0.5f, 0.5f);
+                if(map != null){
+                    map.recycle();
+                }
+                return bitmap;
+            }
         }
         return null;
     }
@@ -235,10 +303,10 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
      * @param dirPath
      * @return true?false
      */
-    private boolean dirExistOrMkDir(String dirPath) {
+    private boolean dirIsExistAndMkdir(String dirPath) {
         String sdCard = Environment.getExternalStorageState();
         if (!sdCard.equals(Environment.MEDIA_MOUNTED)) {
-            ToastUtils.showShort(this, "未检测到SD卡!");
+            ToastUtils.showShort(this, "未检测到存储卡!");
             return false;
         }
         File f = new File(Environment.getExternalStorageDirectory() + "/"
@@ -253,8 +321,8 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
         return false;
     }
 
-    private void getCurImgPathToVar() {
-        if(!dirExistOrMkDir(Constants.IMG_DIR)){
+    private void getCurImgPathToVar(){
+        if(!dirIsExistAndMkdir(Constants.IMG_DIR)){
             ToastUtils.showShort(this, "创建文件失败");
             return ;
         }
@@ -268,29 +336,13 @@ public class AddNoteActivity extends Activity implements View.OnClickListener{
     }
 
     /**
-     * 重写按返回键，实现按两次退出效果 或者 新笔记直接返回|有内容的话询问是否放弃
+     * 重写按返回键，实现按两次退出效果
      * @Override
      */
     public void onBackPressed() {
-        if(noteId == -1){
-            if( spanContentText.getText().length() == 0){   //getText后toString得到的不是空
-                backToMainActivity();
-            }else{
-                AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                builder.setMessage("放弃编辑？");
-                builder.setPositiveButton("是",new DialogInterface.OnClickListener(){
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        backToMainActivity();
-                    }
-                });
-                builder.setNegativeButton("否", null);
-                builder.show();
-            }
-            return ;
-        }
         String old = dbManager.getData(noteId).getContent();
         String newer = spanContentText.getText().toString();
+
         if( !old.equals(newer) ){
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setMessage("放弃编辑？");

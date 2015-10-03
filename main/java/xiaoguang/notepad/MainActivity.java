@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
         initDataFromDb();
         deleteMode = false;
         isALLselect = false;
+
     }
     public static void refreshUI(){
         mAdapter.notifyDataSetChanged();
@@ -195,17 +196,16 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if(deleteMode){
-            beginNormalMode();
-        }else if (keyCode == KeyEvent.KEYCODE_BACK) {
+        if(keyCode == KeyEvent.KEYCODE_BACK){
             long currentTime = System.currentTimeMillis();
-            if (currentTime - oldTime <= Constants.EXIT_TIME) {
+            if(currentTime - oldTime <= Constants.EXIT_TIME){
                 this.finish();
-            } else {
+            }else{
                 ToastUtils.showShort(this, "再按一次退出");
                 oldTime = currentTime;
             }
         }
         return true;
     }
+
 }

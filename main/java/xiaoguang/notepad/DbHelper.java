@@ -20,13 +20,18 @@ public class DbHelper extends SQLiteOpenHelper {
     @Override
     public void onCreate(SQLiteDatabase db) {
         String sql = "create table if not exists "+ Constants.TABLE_NAME+
-                " ("+Constants.TABLE_ID+" integer primary key AUTOINCREMENT, image TEXT,title TEXT,content TEXT,time TEXT)";
+                " ("+Constants.TABLE_ID+" integer primary key AUTOINCREMENT, image BLOB,title TEXT,content TEXT,time TEXT)";
+        String sql_pic = "create table if not exists "+Constants.PIC_TABLE+
+                " ("+Constants.PIC_ID+" integer primary key AUTOINCREMENT, img BLOB)";
         db.execSQL(sql);
+        db.execSQL(sql_pic);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL("DROP TABLE IF EXISTS "+Constants.TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS "+Constants.PIC_TABLE);
         onCreate(db);
     }
+
 }
