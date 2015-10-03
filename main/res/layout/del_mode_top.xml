@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:visibility="gone"
+    android:background="#33251b33"
+    android:id="@+id/id_del_mode_top"
+    android:layout_height="40dp">
+
+    <TextView
+        android:id="@+id/top_tv_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="取消"
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:textSize="15dp"
+        android:layout_marginLeft="5dp"
+        android:clickable="true"
+        android:textColor="#f0ecdc"/>
+    <TextView
+        android:id="@+id/top_tv_selectAll"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:text="全选"
+        android:textSize="15dp"
+        android:layout_marginRight="5dp"
+        android:clickable="true"
+        android:layout_centerVertical="true"
+        android:textColor="#f0ecdc"/>
+</RelativeLayout>
