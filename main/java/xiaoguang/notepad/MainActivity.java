@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
      * 从数据库获取所有笔记，传给dataList
      */
     private void initDataFromDb(){
-        dataList = new ArrayList<>();
+        dataList = new ArrayList<ItemBean>();
         dbManager.getDataList(dataList);
         mAdapter = new MyListAdapter(MainActivity.this,dataList);
         listview.setAdapter(mAdapter);

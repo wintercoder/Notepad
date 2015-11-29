@@ -3,7 +3,7 @@
               android:orientation="vertical"
               android:layout_width="match_parent"
               android:layout_height="50dp"
-                android:background="#33504eff"
+                android:background="#b7c5c6"
     >
     <TextView
         android:layout_width="wrap_content"
@@ -29,6 +29,7 @@
         android:text="content"
         android:layout_centerInParent="true"
         android:id="@+id/id_lv_content"
+        android:textColor="#000000"
         android:layout_toRightOf="@+id/id_lv_img"
         android:layout_toEndOf="@+id/id_lv_img"/>
 
@@ -37,6 +38,7 @@
         android:layout_height="wrap_content"
         android:id="@+id/id_lv_time"
         android:text="09-28 20:23:29"
+        android:textColor="#3a3a3a"
         android:layout_toLeftOf="@+id/id_lv_cb"
         android:layout_centerInParent="true"
         />

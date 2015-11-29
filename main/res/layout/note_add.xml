@@ -22,6 +22,7 @@
             android:layout_height="wrap_content"
             android:text="编辑"
             android:textSize="20dp"
+            android:textColor="#3d3d3d"
             android:layout_centerInParent="true"
             android:layout_centerHorizontal="true"/>
 
@@ -39,6 +40,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:id="@+id/id_viewTime"
+            android:textColor="#575210"
             android:text="2015-09-24 22:20:25"/>
         <xiaoguang.tools.SpanText
             android:background="@mipmap/add_note_bg"
