@@ -1,25 +1,12 @@
-#练习项目，简易记事本
+# 简易记事本，纯粹用于练习
 
-#####本分支的图片存储：只保存其路径，然后SpanText显示为图片，图标的也如此，至于内存溢出，用工具类解决。
-#####另外也有个把图库获取的图片存数据库的demo，请转[picDb分支](https://github.com/hanyuguang/Notepad/tree/pidDb)
+基本的增删记事，支持图文混排，删除入口：长按记事item，由于模拟器分辨率过高所以图片显示可能没那么好看，实际手机上看挺可以的。
 
-####listview的item间隔：  
-listview不设置背景，item的背景设置跟整个页面的背景不一样。  
-```java
-// listview settings
-android:divider="#00000000"  
-android:dividerHeight="10dp"  
-```
+![](/demo.gif)
 
-####点listview的item响应checkbox：  
-```java
-// checkbox settings
-android:focusable="false"  
-android:checked="false"  
-```
-再设置listview的onItemClick()    
+图片存储：只保存其路径，然后SpanText显示为图片，图标的也如此，同时适当缩括图片。
 
+另外也有个把图库获取的图片直接存数据库的demo，不过这样会很卡顿 -> [picDb分支（不更新）](https://github.com/hanyuguang/Notepad/tree/pidDb)
 
-![Index](https://cloud.githubusercontent.com/assets/14596166/12810880/e864d76a-cb63-11e5-858e-c37e0df85ffa.png)  
-
-![edit](https://cloud.githubusercontent.com/assets/14596166/12810943/54726b7a-cb64-11e5-9b31-f70766117e22.png)  
+1. 建议将主页面和编辑记事页面的背景图片改成一致，若色差太大会看起来很晃眼
+2. 编辑记事页面的UI控件是主线程加载，正文是另开线程加载的，所以会有先出界面再出文本的情况，但这样切换速度较快也不会卡UI
